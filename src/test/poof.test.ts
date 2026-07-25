@@ -1,19 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { decryptText, encryptText } from "../lib/crypto.server";
+import { decryptPoof, encryptPoof, getPoofKeyFromHash } from "../lib/crypto";
 import { generatePoofId, readOnce } from "../lib/poof.server";
-import { createPoofInputSchema, poofIdSchema } from "../lib/poof.schema";
+import {
+    createPoofInputSchema,
+    encryptedPoofSchema,
+    poofIdSchema,
+    poofTextSchema
+} from "../lib/poof.schema";
 
 describe("poof crypto", () => {
-    it("round-trips encrypted text", () => {
-        const encrypted = encryptText("secret\nvalue", "test-key");
+    it("round-trips encrypted text with a random key", async () => {
+        const encrypted = await encryptPoof("secret\nvalue");
 
-        expect(encrypted).not.toContain("secret");
-        expect(decryptText(encrypted, "test-key")).toBe("secret\nvalue");
+        expect(JSON.stringify(encrypted.payload)).not.toContain("secret");
+        expect(await decryptPoof(encrypted.payload, encrypted.key)).toBe("secret\nvalue");
     });
 
-    it("rejects missing encryption keys", () => {
-        expect(() => encryptText("secret", "")).toThrow("Encryption key is required");
-        expect(() => decryptText("secret", "")).toThrow("Encryption key is required");
+    it("rejects an incorrect encryption key", async () => {
+        const encrypted = await encryptPoof("secret");
+        const other = await encryptPoof("other");
+
+        await expect(decryptPoof(encrypted.payload, other.key)).rejects.toThrow();
+    });
+
+    it("reads valid keys only from URL fragments", async () => {
+        const { key } = await encryptPoof("secret");
+
+        expect(getPoofKeyFromHash(`#key=${key}`)).toBe(key);
+        expect(getPoofKeyFromHash("#key=invalid")).toBeNull();
+        expect(getPoofKeyFromHash("")).toBeNull();
     });
 });
 
@@ -26,8 +41,15 @@ describe("poof validation", () => {
     });
 
     it("rejects empty and oversized content", () => {
-        expect(createPoofInputSchema.safeParse({ text: "   " }).success).toBe(false);
-        expect(createPoofInputSchema.safeParse({ text: "a".repeat(10_001) }).success).toBe(false);
+        expect(poofTextSchema.safeParse("   ").success).toBe(false);
+        expect(poofTextSchema.safeParse("a".repeat(10_001)).success).toBe(false);
+    });
+
+    it("accepts a versioned encrypted payload", async () => {
+        const { payload } = await encryptPoof("secret");
+
+        expect(encryptedPoofSchema.parse(payload)).toEqual(payload);
+        expect(createPoofInputSchema.safeParse({ payload }).success).toBe(true);
     });
 });
 

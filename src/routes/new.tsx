@@ -7,8 +7,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { encryptPoof } from "@/src/lib/crypto";
 import { createPoof } from "@/src/lib/poof.functions";
-import { createPoofInputSchema } from "@/src/lib/poof.schema";
+import { poofTextSchema } from "@/src/lib/poof.schema";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeftIcon, CopyIcon, SendIcon } from "lucide-react";
@@ -24,13 +25,13 @@ function NewPoof() {
     const [text, setText] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [createdId, setCreatedId] = useState<string | null>(null);
+    const [createdPoof, setCreatedPoof] = useState<{ id: string; key: string } | null>(null);
 
     async function onSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError(null);
 
-        const parsed = createPoofInputSchema.safeParse({ text });
+        const parsed = poofTextSchema.safeParse(text);
         if (!parsed.success) {
             setError(parsed.error.issues[0]?.message ?? "Invalid poof content");
             return;
@@ -38,8 +39,9 @@ function NewPoof() {
 
         setIsSubmitting(true);
         try {
-            const result = await createPoofAction({ data: parsed.data });
-            setCreatedId(result.id);
+            const encrypted = await encryptPoof(parsed.data);
+            const result = await createPoofAction({ data: { payload: encrypted.payload } });
+            setCreatedPoof({ id: result.id, key: encrypted.key });
             setText("");
         } catch (cause) {
             console.error("Failed to create poof", cause);
@@ -80,7 +82,7 @@ function NewPoof() {
                 />
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-muted-foreground text-sm">
-                        Content is encrypted, stored briefly, and deleted after one view.
+                        Encrypted in your browser, stored briefly, and deleted after one view.
                     </p>
                     <Button type="submit" disabled={isSubmitting}>
                         <SendIcon className="size-3.5" />
@@ -90,25 +92,29 @@ function NewPoof() {
                 {error ? <p className="text-destructive text-sm">{error}</p> : null}
             </form>
 
-            <SuccessDialog poofId={createdId} onOpenChange={(open) => !open && setCreatedId(null)} />
+            <SuccessDialog
+                poof={createdPoof}
+                onOpenChange={(open) => !open && setCreatedPoof(null)}
+            />
         </div>
     );
 }
 
 function SuccessDialog({
-    poofId,
+    poof,
     onOpenChange
 }: {
-    poofId: string | null;
+    poof: { id: string; key: string } | null;
     onOpenChange: (open: boolean) => void;
 }) {
     const [copied, setCopied] = useState(false);
     const poofUrl = useMemo(() => {
-        if (!poofId || typeof window === "undefined") {
+        if (!poof || typeof window === "undefined") {
             return "";
         }
-        return `${window.location.origin}/p/${poofId}`;
-    }, [poofId]);
+        const fragment = new URLSearchParams({ key: poof.key });
+        return `${window.location.origin}/p/${poof.id}#${fragment}`;
+    }, [poof]);
 
     async function copyToClipboard() {
         if (!poofUrl) return;
@@ -118,7 +124,7 @@ function SuccessDialog({
     }
 
     return (
-        <Dialog open={Boolean(poofId)} onOpenChange={onOpenChange}>
+        <Dialog open={Boolean(poof)} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-xl">
                 <DialogHeader>
                     <DialogTitle>Your poof has been created</DialogTitle>

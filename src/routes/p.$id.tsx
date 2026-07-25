@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { decryptPoof, getPoofKeyFromHash } from "@/src/lib/crypto";
 import { revealPoof } from "@/src/lib/poof.functions";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -10,6 +11,7 @@ type RevealState =
     | { status: "loading" }
     | { status: "ready"; value: string }
     | { status: "missing" }
+    | { status: "missing-key" }
     | { status: "error"; message: string };
 
 export const Route = createFileRoute("/p/$id")({
@@ -27,14 +29,31 @@ function PoofView() {
 
         async function reveal() {
             setState({ status: "loading" });
+            const key = getPoofKeyFromHash(window.location.hash);
+            if (!key) {
+                setState({ status: "missing-key" });
+                return;
+            }
+
             try {
                 const result = await revealPoofAction({ data: { id } });
                 if (cancelled) return;
-                setState(result.found ? { status: "ready", value: result.value } : { status: "missing" });
+                if (!result.found) {
+                    setState({ status: "missing" });
+                    return;
+                }
+
+                const value = await decryptPoof(result.payload, key);
+                if (cancelled) return;
+                window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+                setState({ status: "ready", value });
             } catch (cause) {
                 console.error("Failed to reveal poof", cause);
                 if (!cancelled) {
-                    setState({ status: "error", message: "Failed to reveal this poof." });
+                    setState({
+                        status: "error",
+                        message: "This poof could not be decrypted. It may have an invalid key."
+                    });
                 }
             }
         }
@@ -60,6 +79,20 @@ function PoofView() {
                         <AsteriskIcon className="size-8 animate-spin" />
                         <p className="text-muted-foreground mt-4 text-sm">Loading poof...</p>
                     </div>
+                </div>
+            </PoofShell>
+        );
+    }
+
+    if (state.status === "missing-key") {
+        return (
+            <PoofShell>
+                <div className="flex min-h-[22rem] flex-col items-center justify-center text-center">
+                    <h1 className="text-xl font-medium">Encryption key missing</h1>
+                    <p className="text-muted-foreground mt-2 max-w-sm text-sm leading-relaxed">
+                        This link does not include the key needed to decrypt the poof. Ask the sender
+                        for the complete link.
+                    </p>
                 </div>
             </PoofShell>
         );

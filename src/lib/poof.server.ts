@@ -1,7 +1,6 @@
 import { randomInt } from "node:crypto";
-import { decryptText, encryptText } from "./crypto.server";
 import { getServerEnv } from "./env.server";
-import { poofIdSchema } from "./poof.schema";
+import { encryptedPoofSchema, poofIdSchema, type EncryptedPoof } from "./poof.schema";
 import { getRedisClient } from "./redis.server";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -19,7 +18,7 @@ export type RevealPoofResult =
     | {
           found: true;
           id: string;
-          value: string;
+          payload: EncryptedPoof;
       }
     | {
           found: false;
@@ -56,13 +55,13 @@ return value
     return typeof value === "string" ? value : null;
 }
 
-export async function createPoofEntry(text: string, ttlSeconds?: number) {
+export async function createPoofEntry(payload: EncryptedPoof, ttlSeconds?: number) {
     const env = getServerEnv();
     const redis = await getRedisClient();
     const id = generatePoofId();
-    const encrypted = encryptText(text, env.ENCRYPTION_KEY);
+    const encrypted = encryptedPoofSchema.parse(payload);
 
-    await redis.set(poofKey(id), encrypted, {
+    await redis.set(poofKey(id), JSON.stringify(encrypted), {
         EX: ttlSeconds ?? env.POOF_DEFAULT_TTL_SECONDS
     });
     await redis.incr("poof:stats:total_created");
@@ -72,19 +71,19 @@ export async function createPoofEntry(text: string, ttlSeconds?: number) {
 
 export async function revealPoofEntry(id: string): Promise<RevealPoofResult> {
     const parsedId = poofIdSchema.parse(id);
-    const env = getServerEnv();
     const redis = await getRedisClient();
-    const encrypted = await readOnce(redis, poofKey(parsedId));
+    const storedPayload = await readOnce(redis, poofKey(parsedId));
 
-    if (!encrypted) {
+    if (!storedPayload) {
         return { found: false };
     }
 
+    const payload = encryptedPoofSchema.parse(JSON.parse(storedPayload));
     await redis.incr("poof:stats:total_viewed");
 
     return {
         found: true,
         id: parsedId,
-        value: decryptText(encrypted, env.ENCRYPTION_KEY)
+        payload
     };
 }
