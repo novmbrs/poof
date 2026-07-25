@@ -9,7 +9,7 @@ const revealPoofInputSchema = z.object({
 
 export const createPoof = createServerFn({ method: "POST" })
     .inputValidator((data) => createPoofInputSchema.parse(data))
-    .handler(async ({ data }) => createPoofEntry(data.text));
+    .handler(async ({ data }) => createPoofEntry(data.payload));
 
 export const revealPoof = createServerFn({ method: "POST" })
     .inputValidator((data) => revealPoofInputSchema.parse(data))

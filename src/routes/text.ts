@@ -10,7 +10,7 @@ export const Route = createFileRoute("/text")({
                 try {
                     const body = await request.json();
                     const data = createPoofApiSchema.parse(body);
-                    const result = await createPoofEntry(data.text, data.ttl);
+                    const result = await createPoofEntry(data.payload, data.ttl);
                     return Response.json(result, { status: 201 });
                 } catch (error) {
                     if (error instanceof ZodError || error instanceof SyntaxError) {

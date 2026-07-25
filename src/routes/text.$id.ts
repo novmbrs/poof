@@ -12,7 +12,7 @@ export const Route = createFileRoute("/text/$id")({
                         return Response.json({ error: "entry not found" }, { status: 404 });
                     }
 
-                    return Response.json({ id: result.id, value: result.value });
+                    return Response.json({ id: result.id, payload: result.payload });
                 } catch (error) {
                     if (error instanceof ZodError) {
                         return Response.json({ error: "invalid id" }, { status: 400 });

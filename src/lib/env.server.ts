@@ -7,7 +7,6 @@ const redisUrlSchema = isProduction
 
 const envSchema = z.object({
     REDIS_URL: redisUrlSchema,
-    ENCRYPTION_KEY: z.string().min(1, "ENCRYPTION_KEY is required"),
     POOF_DEFAULT_TTL_SECONDS: z.coerce.number().int().positive().default(604_800)
 });
 
