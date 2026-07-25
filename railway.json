@@ -4,7 +4,7 @@
         "buildCommand": "bun run build"
     },
     "deploy": {
-        "startCommand": "HOST=0.0.0.0 NITRO_HOST=0.0.0.0 PORT=$PORT node .output/server/index.mjs",
+        "startCommand": "node .output/server/index.mjs",
         "healthcheckPath": "/health",
         "healthcheckTimeout": 30,
         "restartPolicyType": "ON_FAILURE",
