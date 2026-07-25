@@ -1,0 +1,17 @@
+.git
+.github
+.agents
+.codex
+.cursor
+.bun
+.nitro
+.output
+node_modules
+coverage
+dist
+build
+.env
+.env.*
+*.log
+*.tsbuildinfo
+.DS_Store
