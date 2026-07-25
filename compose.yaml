@@ -2,7 +2,6 @@ services:
     poof:
         image: ghcr.io/novmbrs/poof:${POOF_VERSION:-latest}
         environment:
-            ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env before starting Poof}
             REDIS_URL: redis://redis:6379
             POOF_DEFAULT_TTL_SECONDS: ${POOF_DEFAULT_TTL_SECONDS:-604800}
         ports:

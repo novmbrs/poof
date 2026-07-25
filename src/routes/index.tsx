@@ -14,20 +14,20 @@ const notes = [
     },
     {
         title: "Encrypted",
-        description: "Content is encrypted before it is stored in Redis."
+        description: "Client side encryption, zero-knowledge server."
     }
 ];
 
 const ASCII_LOGO = String.raw`
-                                .o88o.            oooo        
-                                888                888        
-oo.ooooo.   .ooooo.   .ooooo.  o888oo     .oooo.o  888 .oo.   
- 888'  88b d88'  88b d88'  88b  888      d88(  "8  888P"Y88b  
- 888   888 888   888 888   888  888      "Y88b.    888   888  
- 888   888 888   888 888   888  888      o.  )88b  888   888  
- 888bod8P'  Y8bod8P'  Y8bod8P' o888o  8  8""888P' o888o o888o 
- 888                                                            
-o888o                         
+                                .o88o.            oooo
+                                888                888
+oo.ooooo.   .ooooo.   .ooooo.  o888oo     .oooo.o  888 .oo.
+ 888'  88b d88'  88b d88'  88b  888      d88(  "8  888P"Y88b
+ 888   888 888   888 888   888  888      "Y88b.    888   888
+ 888   888 888   888 888   888  888      o.  )88b  888   888
+ 888bod8P'  Y8bod8P'  Y8bod8P' o888o  8  8""888P' o888o o888o
+ 888
+o888o
 `;
 
 function AsciiLogo({ className }: { className?: string }) {
@@ -51,7 +51,7 @@ export const Route = createFileRoute("/")({
 
 function Home() {
     return (
-        <div className="mx-auto flex w-full max-w-3xl flex-col px-4 pt-16 pb-12 sm:px-8 sm:pt-24">
+        <div className="mx-auto flex w-full max-w-3xl flex-col px-4 pt-8 pb-12 sm:px-8 ">
             <div className="overflow-x-auto">
                 <AsciiLogo className="text-foreground/80 text-[7px] sm:text-[9px]" />
             </div>

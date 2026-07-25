@@ -8,8 +8,8 @@ tracking.
 
 ## Features
 
-- One-time view: entries are deleted after a successful read
-- Encrypted storage: text is encrypted before being stored in Redis
+- One-time view: encrypted entries are deleted when retrieved
+- Client-side encryption: text is encrypted in the browser and the key never reaches the server
 - Anonymous: no auth or user records
 - Expiring entries: unopened poofs expire after a configurable TTL
 
@@ -18,7 +18,7 @@ tracking.
 - TanStack Start & React
 - Tailwind CSS
 - Redis
-- AES-256-GCM via Node crypto
+- AES-256-GCM via the Web Crypto API
 
 ## Development
 
@@ -39,29 +39,25 @@ bun run dev
 Required environment:
 
 ```bash
-ENCRYPTION_KEY=replace-with-a-long-random-secret
 REDIS_URL=redis://localhost:6379
 POOF_DEFAULT_TTL_SECONDS=604800
 ```
+
+Web Crypto requires a secure browser context. Use HTTPS outside local development.
 
 ## Docker
 
 The official image is published to `ghcr.io/novmbrs/poof`.
 
-Copy the example environment file and replace the encryption key with a stable random secret:
+Copy the example environment file and start the stack:
 
 ```bash
 cp .env.example .env
-openssl rand -hex 32
-# Put the generated value in .env as ENCRYPTION_KEY, then start the stack.
 docker compose up -d
 ```
 
 Poof is available at `http://localhost:3000`. Set `POOF_PORT` in `.env` to use a different host
 port. Redis data is stored in the `poof_redis-data` Docker volume.
-
-The encryption key must remain the same between restarts and upgrades. Existing poofs cannot be
-decrypted if the key changes.
 
 To upgrade or stop the stack:
 
@@ -75,7 +71,6 @@ To run only the application image against an existing Redis server:
 
 ```bash
 docker run --rm -p 3000:3000 \
-  -e ENCRYPTION_KEY=replace-with-a-long-random-secret \
   -e REDIS_URL=redis://host.docker.internal:6379 \
   -e POOF_DEFAULT_TTL_SECONDS=604800 \
   ghcr.io/novmbrs/poof:latest
@@ -90,8 +85,12 @@ On Linux, use a Redis address reachable from the container instead of `host.dock
 - `GET /new` creates a new poof.
 - `GET /p/:id` reveals and deletes a poof.
 - `GET /health` returns service status.
-- `POST /text` accepts `{ "text": "secret", "ttl": 3600 }` and returns `{ "id": "..." }`.
-- `GET /text/:id` reveals and deletes a poof through the compatibility API.
+- `POST /text` accepts `{ "payload": { "version": 1, "iv": "...", "ciphertext": "..." }, "ttl": 3600 }` and returns `{ "id": "..." }`.
+- `GET /text/:id` returns the encrypted payload and deletes the poof. API clients are responsible
+  for encryption, key sharing, and decryption.
+
+Web share links keep the random 256-bit encryption key in the URL fragment (`#key=...`). Browsers do
+not send that fragment to the server.
 
 ## Verification
 
